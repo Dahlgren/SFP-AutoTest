@@ -62,34 +62,48 @@ task locateArma3 << {
 }
 
 subprojects {
+  project.ext.armaProfile = 'autotest'
   project.ext.autotestFile = 'autotest.cfg'
+  project.ext.missions = []
 
-  task cloneIslandTestMission << {
-    def missionRepo = 'https://github.com/SwedishForcesPack/sfp_island_auto_test.VR.git'
+  project.ext.testMissionIsland = 'https://github.com/SwedishForcesPack/sfp_island_auto_test.VR.git'
+  project.ext.testMissionObjectDumper = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
+  project.ext.testMissionRoad = 'https://github.com/SwedishForcesPack/sfp_road_test.sfp_roso.git'
 
-    delete file(missionDir).getAbsolutePath()
-    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(missionDir).getAbsolutePath(), uri: missionRepo)
-  }
+  project.ext.createTestMissionTask = { repository, missionDir ->
+    def missionTask = task("test_mission_${missionDir}") << {
+      String missionPath = file(missionDir).getAbsolutePath()
 
-  task cloneObjectDumperTestMission << {
-    def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
+      delete missionPath
+      def grgit = org.ajoberstar.grgit.Grgit.clone(dir: missionPath, uri: repository)
 
-    delete file(missionDir).getAbsolutePath()
-    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(missionDir).getAbsolutePath(), uri: missionRepo)
+      missions.add(missionPath)
+    }
+
+    generateAutotestFile.dependsOn(missionTask)
+
+    return missionTask
   }
 
   task generateAutotestFile << {
-    String missionPath = file(missionDir).getAbsolutePath()
+    def idx = 1
+    String missionClasses = missions.collect { mission ->
+      return """
+      class TestCase${idx++}
+      {
+        campaign = \"\";
+        mission = \"${mission}\";
+      };
+      """
+    }.join("\n")
+
     String fileContent = """
     class TestMissions
     {
-      class TestCase01
-      {
-        campaign = \"\";
-        mission = \"${missionPath}\";
-      };
+      ${missionClasses}
     };
     """.stripIndent()
+
     new File(autotestFile).write(fileContent)
   }
 
@@ -105,6 +119,14 @@ subprojects {
         throw new GradleException("Steam Workshop download failed")
       }
     }
+  }
+
+  task setupProfile << {
+    def userProfileDir = System.getenv('USERPROFILE')
+    def armaProfileDir = file("${userProfileDir}/Documents/Arma 3 - Other Profiles/${armaProfile}")
+    delete armaProfileDir
+    armaProfileDir.mkdirs()
+    file("${armaProfileDir}/${armaProfile}.Arma3Profile").write("maxScreenShotFolderSizeMB=2000;")
   }
 
   task runAutotest {
@@ -124,6 +146,7 @@ subprojects {
         armaExecutable,
         autotest,
         mods,
+        "-name=autotest",
         "-world=empty",
         "-noPause",
         "-noSplash",
@@ -133,6 +156,7 @@ subprojects {
   }
   runAutotest.dependsOn(generateAutotestFile)
   runAutotest.dependsOn(locateArma3)
+  runAutotest.dependsOn(setupProfile)
   runAutotest.mustRunAfter(downloadMods)
 
   task moveLogFile << {
@@ -144,5 +168,13 @@ subprojects {
     delete logsDir
     mkdir logsDir
     FileUtils.moveFile(source, destination)
+  }
+
+  task moveScreenshots << {
+    def userProfileDir = System.getenv('USERPROFILE')
+    def source = file("${userProfileDir}/Documents/Arma 3 - Other Profiles/${armaProfile}/Screenshots")
+    def destination = file('screenshots')
+    delete destination
+    FileUtils.moveDirectory(source, destination)
   }
 }

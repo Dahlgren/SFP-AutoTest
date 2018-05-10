@@ -1,4 +1,3 @@
-project.ext.missionDir = 'sfp_island_auto_test.sfp_sturko'
 project.ext.mod = 'sfp_sturko'
 project.ext.mods = [
   '583496184', // CUP Terrains Core
@@ -6,4 +5,5 @@ project.ext.mods = [
   '894420263', // SFP Sturkö Nightly
 ]
 
-runAutotest.dependsOn(cloneIslandTestMission)
+runAutotest.dependsOn(createTestMissionTask(testMissionIsland, 'sfp_island_auto_test.sfp_sturko'))
+runAutotest.dependsOn(createTestMissionTask(testMissionRoad, 'sfp_road_test.sfp_sturko'))

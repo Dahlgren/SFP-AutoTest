@@ -131,5 +131,6 @@ def runForMod(mod) {
     bat "gradlew ${mod}:downloadMods"
     bat "gradlew ${mod}:runAutotest"
     bat "gradlew ${mod}:moveLogFile"
-    archiveArtifacts artifacts: "${mod}/logs/*.rpt"
+    bat "gradlew ${mod}:moveScreenshots"
+    archiveArtifacts artifacts: "${mod}/logs/*.rpt, ${mod}/screenshots/**/*"
 }
